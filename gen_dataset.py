@@ -10,6 +10,7 @@ img_w = 256
 img_h = 256  
 
 image_sets = ['1.png','2.png','3.png','4.png','5.png']
+#image_sets = ['3.tif','4.tif','5.tif','6.tif','7.tif']
 
 def gamma_transform(img, gamma):
     gamma_table = [np.power(x / 255.0, gamma) * 255.0 for x in range(256)]
@@ -63,14 +64,14 @@ def data_augment(xb,yb):
         
     return xb,yb
 
-def creat_dataset(image_num = 50000, mode = 'original'):
+def creat_dataset(image_num = 100000, mode = 'original'):
     print('creating dataset...')
     image_each = image_num / len(image_sets)
     g_count = 0
     for i in tqdm(range(len(image_sets))):
         count = 0
-        src_img = cv2.imread('/home/zq/dataset/RSI/all/train/src/' + image_sets[i])  # 3 channels
-        label_img = cv2.imread('/home/zq/dataset/RSI/all/train/label/' + image_sets[i],cv2.IMREAD_GRAYSCALE)  # single channel
+        src_img = cv2.imread('/home/cqnu/dataset/RSI_train/all/train/src/' + image_sets[i])  # 3 channels
+        label_img = cv2.imread('/home/cqnu/dataset/RSI_train/all/train/label/' + image_sets[i],cv2.IMREAD_GRAYSCALE)  # single channel
         X_height,X_width,_ = src_img.shape
         while count < image_each:
             random_width = random.randint(0, X_width - img_w - 1)
@@ -83,9 +84,9 @@ def creat_dataset(image_num = 50000, mode = 'original'):
             visualize = np.zeros((256,256)).astype(np.uint8)
             visualize = label_roi *50
             
-            cv2.imwrite(('/home/zq/dataset/RSI/segnet_train_50000/visualize/%d.png' % g_count),visualize)
-            cv2.imwrite(('/home/zq/dataset/RSI/segnet_train_50000/src/%d.png' % g_count),src_roi)
-            cv2.imwrite(('/home/zq/dataset/RSI/segnet_train_50000/label/%d.png' % g_count),label_roi)
+            cv2.imwrite(('/home/cqnu/dataset/RSI_train/segnet_train_100000/visualize/%d.png' % g_count),visualize)
+            cv2.imwrite(('/home/cqnu/dataset/RSI_train/segnet_train_100000/src/%d.png' % g_count),src_roi)
+            cv2.imwrite(('/home/cqnu/dataset/RSI_train/segnet_train_100000/label/%d.png' % g_count),label_roi)
             count += 1 
             g_count += 1
 

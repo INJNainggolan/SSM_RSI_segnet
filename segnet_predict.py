@@ -11,7 +11,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from keras import backend as K
 K.clear_session()
 
-TEST_SET = ['1.png','2.png','3.png','4.png','5.png']
+#TEST_SET = ['1.png','2.png','3.png','4.png','5.png']
+TEST_SET = ['1.tif','2.tif','3.tif','4.tif','5.tif','6.tif','7.tif','8.tif','9.tif','10.tif']
 
 image_size = 256
 
@@ -46,7 +47,7 @@ def predict(args):
     for n in range(len(TEST_SET)):
         path = TEST_SET[n]
         #load the image
-        image = cv2.imread('/home/zq/dataset/RSI/all/train/src/' + path)
+        image = cv2.imread('/home/zq/dataset/dataset_RSI_eCognition/test/' + path)
         h,w,_ = image.shape
         print("image shape =",image.shape)
 
@@ -102,7 +103,7 @@ def predict(args):
 
 
         
-        cv2.imwrite('/home/zq/output/segnet_output/3rd_segnet_epoch_30_bs_2_new_image_50000/predict/predict_train/predict'+str(n+1)+'.png',mask_whole[0:h,0:w])
+        cv2.imwrite('/home/zq/output/segnet_output/3rd_segnet_epoch_30_bs_2_new_image_100000/predict_eCognition_RSI/predict'+str(n+1)+'.png',mask_whole[0:h,0:w])
         
     
 

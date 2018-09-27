@@ -9,31 +9,54 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import argparse
-import numpy as np  
-from keras.models import Sequential  
-from keras.layers import Conv2D,MaxPooling2D,UpSampling2D,BatchNormalization,Reshape,Permute,Activation,Dropout
+import numpy as np
+from keras import metrics
+from keras.models import *
+from keras.layers import Conv2D,MaxPooling2D,UpSampling2D,BatchNormalization,Reshape,Permute,Activation,Dropout,Layer
 from keras.utils.np_utils import to_categorical  
 from keras.preprocessing.image import img_to_array  
 from keras.callbacks import ModelCheckpoint  
-from sklearn.preprocessing import LabelEncoder  
+from sklearn.preprocessing import LabelEncoder
+from keras import optimizers
+from keras.layers.merge import concatenate
+from keras import regularizers
 from PIL import Image  
 import matplotlib.pyplot as plt
 import cv2
 import random
 import os
-from tqdm import tqdm  
+from tqdm import tqdm
+import tensorflow as tf
+from keras.callbacks import TensorBoard, LearningRateScheduler, ReduceLROnPlateau
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 seed = 7  
-np.random.seed(seed)  
-  
+np.random.seed(seed)
+
 #data_shape = 360*480  
 img_w = 256  
 img_h = 256  
 #有一个为背景  
 n_label = 4+1  
   
-classes = [0. ,  1.,  2.,   3.  , 4.]  
-  
+classes = [0. ,  1.,  2.,   3.  , 4.]
+
+
+EPOCHS = 15
+BS = 2
+
+
+
+learning_rate = 0.01
+decay = 0.001
+learning_rate = learning_rate * 1/(1 + decay * EPOCHS)
+sgd = optimizers.SGD(lr = learning_rate, decay = learning_rate/EPOCHS, momentum=0.9, nesterov=True)
+
+
+
+#adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999,epsilon=1e-08)
+
+
 labelencoder = LabelEncoder()  
 labelencoder.fit(classes)  
 
@@ -49,7 +72,8 @@ def load_img(path, grayscale=False):
     return img
 
 
-filepath ="/home/zq/dataset/RSI/segnet_train_50000/"
+filepath ="/home/zq/dataset/RSI_train/segnet_train_100000/"
+log_filepath = "/home/zq/output/segnet_output/logs"
 
 def get_train_val(val_rate = 0.25):
     train_url = []    
@@ -122,145 +146,155 @@ def generateValidData(batch_size,data=[]):
                 yield (valid_data,valid_label)  
                 valid_data = []  
                 valid_label = []  
-                batch = 0  
+                batch = 0
+
 
 def SegNet():  
     model = Sequential()  
     #encoder  
-    model.add(Conv2D(64,(3,3),strides=(1,1),input_shape=(img_w,img_h, 3),padding='same',activation='relu'))
-#    model.add(Dropout(0.5))
+    model.add(Conv2D(64,(3,3),strides=(1,1),input_shape=(img_w,img_h, 3),padding='same',activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(64,(3,3),strides=(1,1),padding='same',activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(64,(3,3),strides=(1,1),padding='same',activation='elu'))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2,2)))  
     #(128,128)  
-    model.add(Conv2D(128, (3, 3), strides=(1, 1),padding='same', activation='relu'))
-#    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (3, 3), strides=(1, 1),padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(128, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2)))  
     #(64,64)  
-    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2)))  
     #(32,32)  
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    '''
+
      #(16,16)  
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
+
+#    model.add(Dropout(0.5))
+
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    '''
+
 
     #(8,8)  
     #decoder  
     model.add(UpSampling2D(size=(2,2)))  
 
-    '''
+
      #(16,16)  
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
+
+#    model.add(Dropout(0.5))
+
     model.add(BatchNormalization())
     model.add(UpSampling2D(size=(2, 2)))
-    '''
+
     #(32,32)  
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(512, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(UpSampling2D(size=(2, 2)))  
     #(64,64)  
-    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(256, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(UpSampling2D(size=(2, 2)))  
     #(128,128)  
-    model.add(Conv2D(128, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-#    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(128, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(128, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(UpSampling2D(size=(2, 2)))  
     #(256,256)  
-    model.add(Conv2D(64, (3, 3), strides=(1, 1), input_shape=(img_w, img_h, 3), padding='same', activation='relu'))
-#    model.add(Dropout(0.5))
+    model.add(Conv2D(64, (3, 3), strides=(1, 1), input_shape=(img_w, img_h, 3), padding='same', activation='elu'))
     model.add(BatchNormalization())
-    model.add(Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='relu'))
-    #    model.add(Dropout(0.5))
+    model.add(Conv2D(64, (3, 3), strides=(1, 1), padding='same', activation='elu'))
     model.add(BatchNormalization())
     model.add(Conv2D(n_label, (1, 1), strides=(1, 1), padding='same'))  
     model.add(Reshape((img_w*img_h,n_label)))
     #axis=1和axis=2互换位置，等同于np.swapaxes(layer,1,2)  
 #    model.add(Permute((2,1)))
-    model.add(Activation('softmax'))  
-    model.compile(loss='categorical_crossentropy',optimizer='sgd',metrics=['accuracy'])  
+    model.add(Activation('softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer=sgd,
+                  metrics=['mae', 'acc', metrics.categorical_accuracy, metrics.categorical_crossentropy])
+#    tf.summary.scalar('learning_rate', learning_rate)
     model.summary()
     return model
+'''
+class RateHistory(keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.Rate = []
 
+class LossHistory(keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
+'''
 
-  
   
 def train(args):
 #def train():
-    EPOCHS = 30
-    BS = 2
+
     model = SegNet()
 
-    modelcheck = ModelCheckpoint(args['model'],monitor='val_acc',save_best_only=True,mode='max')
-    callable = [modelcheck]  
+    modelcheck = ModelCheckpoint(args['model'],monitor='val_acc',verbose=1, save_best_only=True,mode='max')
+    tensorboard = TensorBoard(log_dir=log_filepath, histogram_freq=0, write_graph=True,
+                                                      write_grads=True, write_images=True)
+    Reduce_rate = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, mode='auto', epsilon = 0.0001, cooldown=0, min_lr=0)
+#    history = LossHistory()
     train_set,val_set = get_train_val()
     train_numb = len(train_set)  
     valid_numb = len(val_set)  
     print ("the number of train data is",train_numb)  
     print ("the number of val data is",valid_numb)
-    H = model.fit_generator(generator=generateData(BS,train_set),steps_per_epoch=train_numb//BS,epochs=EPOCHS,verbose=1,  
-                    validation_data=generateValidData(BS,val_set),validation_steps=valid_numb//BS,callbacks=callable,max_q_size=1)  
+
+
+    H = model.fit_generator(generator=generateData(BS, train_set), steps_per_epoch=train_numb // BS, epochs=EPOCHS,
+                           verbose=1,
+                           validation_data=generateValidData(BS, val_set), validation_steps=valid_numb // BS, shuffle=True,
+                           callbacks=[modelcheck, tensorboard, Reduce_rate], max_q_size=1)
+
+#    print(history.losses)
 
     # plot the training loss and accuracy
+    # save as JSON
+    json_string = model.to_json()
+    open('/home/zq/output/segnet_output/my_model_architecture.json','w').write(json_string)
+    model = model_from_json(open('/home/zq/output/segnet_output/my_model_architecture.json').read())
+
+    model.save_weights('/home/zq/output/segnet_output/my_model_weights.h5')
+
+
+
+
     plt.style.use("ggplot")
     plt.figure()
     N = EPOCHS
@@ -272,9 +306,7 @@ def train(args):
     plt.xlabel("Epoch #")
     plt.ylabel("Loss/Accuracy")
     plt.legend(loc="lower left")
-#    plt.savefig(args["plot"])
     plt.savefig("/home/zq/output/segnet_output/segnet_loss_acc.png")
-    plt.show()
     
 
 def args_parse():
@@ -291,11 +323,17 @@ def args_parse():
 
 
 
+
+
 if __name__=='__main__':
+
+
     args = args_parse()
 
     if args['augment'] == True:
-        filepath ="/home/zq/dataset/RSI/segnet_train_50000/"
+        filepath ="/home/zq/dataset/RSI_train/segnet_train_100000/"
     train(args)
+
+
 
     #predict()  
