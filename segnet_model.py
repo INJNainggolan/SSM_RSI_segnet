@@ -6,6 +6,8 @@ matplotlib.use("Agg")
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, BatchNormalization, Reshape, Permute, Activation, Dropout, \
     Layer
+from keras.models import Model
+from keras.layers import Input, Dense
 
 def SegNet():
     model = Sequential()

@@ -1,7 +1,7 @@
-'''
+
 
 import cv2
-
+'''
 
 for a in range(1, 6 ):
     image = cv2.imread('/home/zq/output/segnet_output/4th_segnet_epoch_30_bs_2_image_50000_delete_512512/predict/predict_test/predict{0}.png'.format(a))
@@ -50,8 +50,8 @@ for a in range(1, 6 ):
 
 
 
-'''
-image = cv2.imread('/home/zq/dataset/RSI_test/predict6.png')
+
+image = cv2.imread('/Volumes/V/ubuntu_zp/Home/dataset/dataset_eCognition/4/label/4.tif')
 
 print(image)
 
@@ -89,7 +89,7 @@ for i in range(image.shape[0]):
             image[i][j][2] = 165
 
 #####################################
-cv2.imwrite('/home/zq/dataset/RSI_test/6_final.png', image[:, :])
+cv2.imwrite('/Volumes/V/ubuntu_zp/Home/dataset/dataset_eCognition/4/label/4-vis.tif', image[:, :])
 '''
 
 
@@ -137,3 +137,4 @@ for a in range(1, 11 ):
 
     #####################################
     cv2.imwrite('/home/zq/output/segnet_output/3rd_segnet_epoch_30_bs_2_new_image_100000/predict_eCognition_RSI/vis_predict_{0}.tif'.format(a), image[:, :])
+'''
