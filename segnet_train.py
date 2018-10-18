@@ -12,7 +12,7 @@ import argparse
 import numpy as np
 from keras import metrics
 from keras.models import *
-from keras.layers import Conv2D,MaxPooling2D,UpSampling2D,BatchNormalization,Reshape,Permute,Activation,Dropout,Layer
+from keras.layers import Conv2D,SeparableConv2D,MaxPooling2D,UpSampling2D,BatchNormalization,Reshape,Permute,Activation,Dropout,Layer
 from keras.utils.np_utils import to_categorical  
 from keras.preprocessing.image import img_to_array  
 from keras.callbacks import ModelCheckpoint  
@@ -147,6 +147,108 @@ def generateValidData(batch_size,data=[]):
                 valid_data = []  
                 valid_label = []  
                 batch = 0
+
+
+def SegNet_SeparableConv2D():
+    inputs = Input((img_w, img_h, 3))  # maxl
+
+    conv1_1 = SeparableConv2D(64, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv1_1')(inputs)
+    conv1_1_bn = BatchNormalization(name='conv1_1_bn')(conv1_1)
+    conv1_2 = SeparableConv2D(64, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv1_2')(conv1_1_bn)
+    conv1_2_bn = BatchNormalization(name='conv1_2_bn')(conv1_2)
+    pool1 = MaxPooling2D(pool_size=(2, 2), name='pool1')(conv1_2_bn)
+
+    conv2_1 = SeparableConv2D(128, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv2_1')(pool1)
+    conv2_1_bn = BatchNormalization(name='conv2_1_bn')(conv2_1)
+    conv2_2 = SeparableConv2D(128, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv2_2')(conv2_1_bn)
+    conv2_2_bn = BatchNormalization(name='conv2_2_bn')(conv2_2)
+    pool2 = MaxPooling2D(pool_size=(2, 2), name='pool2')(conv2_2_bn)
+
+    conv3_1 = SeparableConv2D(256, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv3_1')(pool2)
+    conv3_1_bn = BatchNormalization(name='conv3_1_bn')(conv3_1)
+    conv3_2 = SeparableConv2D(256, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv3_2')(conv3_1_bn)
+    conv3_2_bn = BatchNormalization(name='conv3_2_bn')(conv3_2)
+    conv3_3 = SeparableConv2D(256, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv3_3')(conv3_2_bn)
+    conv3_3_bn = BatchNormalization(name='conv3_3_bn')(conv3_3)
+    pool3 = MaxPooling2D(pool_size=(2, 2), name='pool3')(conv3_3_bn)
+    encdrop3 = Dropout(0.5, name='encdrop3')(pool3)
+
+    conv4_1 = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv4_1')(encdrop3)
+    conv4_1_bn = BatchNormalization(name='conv4_1_bn')(conv4_1)
+    conv4_2 = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv4_2')(conv4_1_bn)
+    conv4_2_bn = BatchNormalization(name='conv4_2_bn')(conv4_2)
+    conv4_3 = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv4_3')(conv4_2_bn)
+    conv4_3_bn = BatchNormalization(name='conv4_3_bn')(conv4_3)
+    pool4 = MaxPooling2D(pool_size=(2, 2), name='pool4')(conv4_3_bn)
+    encdrop4 = Dropout(0.5, name='encdrop4')(pool4)
+
+    conv5_1 = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv5_1')(encdrop4)
+    conv5_1_bn = BatchNormalization(name='conv5_1_bn')(conv5_1)
+    conv5_2 = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv5_2')(conv5_1_bn)
+    conv5_2_bn = BatchNormalization(name='conv5_2_bn')(conv5_2)
+    conv5_3 = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv5_3')(conv5_2_bn)
+    conv5_3_bn = BatchNormalization(name='conv5_3_bn')(conv5_3)
+    pool5 = MaxPooling2D(pool_size=(2, 2), name='pool5')(conv5_3_bn)
+    encdrop5 = Dropout(0.5, name='encdrop5')(pool5)
+
+    up5 = UpSampling2D(size=(2, 2), name='up5')(encdrop5)
+
+    conv5_3_D = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv5_3_D')(up5)
+    conv5_3_D_bn = BatchNormalization(name='conv5_3_D_bn')(conv5_3_D)
+    conv5_2_D = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv5_2_D')(
+        conv5_3_D_bn)
+    conv5_2_D_bn = BatchNormalization(name='conv5_2_D_bn')(conv5_2_D)
+    conv5_1_D = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv5_1_D')(
+        conv5_2_D_bn)
+    conv5_1_D_bn = BatchNormalization(name='conv5_1_D_bn')(conv5_1_D)
+    decdrop5 = Dropout(0.5, name='decdrop5')(conv5_1_D_bn)
+
+    up4 = concatenate([UpSampling2D(size=(2, 2))(decdrop5), conv4_3_bn], axis=-1, name='up4')  # maxl
+    conv4_3_D = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv4_3_D')(up4)
+    conv4_3_D_bn = BatchNormalization(name='conv4_3_D_bn')(conv4_3_D)
+    conv4_2_D = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv4_2_D')(
+        conv4_3_D_bn)
+    conv4_2_D_bn = BatchNormalization(name='conv4_2_D_bn')(conv4_2_D)
+    conv4_1_D = SeparableConv2D(512, (3, 3), strides=(1, 1), activation="relu", padding="same", name='conv4_1_D')(
+        conv4_2_D_bn)
+    conv4_1_D_bn = BatchNormalization(name='conv4_1_D_bn')(conv4_1_D)
+    decdrop4 = Dropout(0.5, name='decdrop4')(conv4_1_D_bn)
+
+    up3 = concatenate([UpSampling2D(size=(2, 2))(decdrop4), conv3_3_bn], axis=-1, name='up3')  # maxl
+    conv3_3_D = SeparableConv2D(256, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv3_3_D')(up3)
+    conv3_3_D_bn = BatchNormalization(name='conv3_3_D_bn')(conv3_3_D)
+    conv3_2_D = SeparableConv2D(256, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv3_2_D')(
+        conv3_3_D_bn)
+    conv3_2_D_bn = BatchNormalization(name='conv3_2_D_bn')(conv3_2_D)
+    conv3_1_D = SeparableConv2D(256, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv3_1_D')(
+        conv3_2_D_bn)
+    conv3_1_D_bn = BatchNormalization(name='conv3_1_D_bn')(conv3_1_D)
+    decdrop3 = Dropout(0.5, name='decdrop3')(conv3_1_D_bn)
+
+    up2 = concatenate([UpSampling2D(size=(2, 2))(decdrop3), conv2_2_bn], axis=-1, name='up2')  # maxl
+    conv2_2_D = SeparableConv2D(128, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv2_2_D')(up2)
+    conv2_2_D_bn = BatchNormalization(name='conv2_2_D_bn')(conv2_2_D)
+    conv2_1_D = SeparableConv2D(128, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv2_1_D')(
+        conv2_2_D_bn)
+    conv2_1_D_bn = BatchNormalization(name='conv2_1_D_bn')(conv2_1_D)
+
+    up1 = concatenate([UpSampling2D(size=(2, 2))(conv2_1_D_bn), conv1_2_bn], axis=-1, name='up1')  # maxl
+    conv1_2_D = SeparableConv2D(64, (3, 3), strides=(1, 1), activation="elu", padding="same", name='conv1_2_D')(up1)
+    conv1_2_D_bn = BatchNormalization(name='conv1_2_D_bn')(conv1_2_D)
+
+    conv1_1_D = SeparableConv2D(n_label, (1, 1), strides=(1, 1), activation="elu", padding="same", name='conv1_1_D')(
+        conv1_2_D_bn)
+
+    reshape = Reshape((img_w * img_h, n_label), name='reshape')(conv1_1_D)
+
+    activation = Activation('softmax', name='activation')(reshape)
+
+    model = Model(inputs=inputs, outputs=activation)
+
+    model.compile(loss='categorical_crossentropy', optimizer='sgd',
+                  metrics=['mae', 'acc'])
+    return model
+
 
 def SegNet_pooling_indices():
     
@@ -356,6 +458,8 @@ def train(args):
 #def train():
 
     model = SegNet()
+#    model = SegNet_pooling_indices()
+#    model = SegNet_SeparableConv2D()
 
     modelcheck = ModelCheckpoint(args['model'],monitor='val_acc',verbose=1, save_best_only=True,mode='max')
     tensorboard = TensorBoard(log_dir=log_filepath, histogram_freq=0, write_graph=True,
